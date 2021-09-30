@@ -1,0 +1,133 @@
+// Copyright (c) 2020 Brayan KUTLAR
+// Copyright (c) 2020 Philippe COSTE
+// Copyright (c) 2020 Antoine TRAN TAN
+// Copyright (c) 2019 ARM Limited
+
+#include "mbed.h"
+#include "rtos.h"
+#include "C12832.h"
+#include "Mail.h"
+#include "Timer.h"
+
+Timer temps;
+Mail<int, 50> file;
+InterruptIn bp(USER_BUTTON, PullDown);
+
+// Blinking rate in milliseconds
+#define BLINKING_RATE 500ms
+
+// Initialise the digital pin LED1 as an output
+DigitalOut led(LED1);
+
+void producer(void);
+void consumer(void);
+void bp_ISR_rise(void);
+void bp_ISR_fall(void);
+
+Thread t1;
+Thread t2;
+float V_temps;
+int main()
+{
+
+
+    t1.start(&producer);
+    t2.start(&consumer);
+
+    while (true)
+    {
+            ThisThread::sleep_for(500ms);    
+    }
+}
+
+void producer(void)
+{
+    bp.rise(&bp_ISR_rise);
+    bp.fall(&bp_ISR_fall);
+
+    while (true)
+    {
+
+        ThisThread::sleep_for(5ms);
+    }
+}
+
+void consumer(void)
+{ 
+    int * element = nullptr ; 
+    int valeur ;
+    while (true)
+    {
+        element = file.try_get(); 
+        if(element!=nullptr)
+        {
+            valeur = *element ; 
+            file.free(element);
+
+
+
+        if(valeur == 0)
+        {
+            led = 1 ;
+            ThisThread::sleep_for(250ms);
+            led = 0 ;
+            ThisThread::sleep_for(1000ms);
+            
+        }
+
+        else if (valeur == 1)
+        {
+            led = 1;
+            ThisThread::sleep_for(1500ms);
+            led = 0;
+            ThisThread::sleep_for(1000ms);
+            
+        }
+
+        }
+        
+    }
+}
+
+void bp_ISR_rise(void)
+{
+    temps.start();
+}
+
+void bp_ISR_fall(void)
+{
+    float temps_lu;
+    temps_lu = temps.read_ms();
+    temps.stop();
+
+    int *element = nullptr;
+
+    element = file.try_alloc();
+
+
+
+    temps.reset();
+
+    if (temps_lu > 100 && temps_lu < 500)
+   
+    
+
+    {
+        element = file.try_alloc();
+        if (element != nullptr)
+        {
+            *element = 0;
+            file.put(element);
+        }
+    }
+
+    else if (temps_lu > 500)
+    {
+        element = file.try_alloc();
+        if (element != nullptr)
+        {
+            *element = 1;
+            file.put(element);
+        }
+    }
+}
