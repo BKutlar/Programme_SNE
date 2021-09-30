@@ -1,0 +1,116 @@
+// Copyright (c) 2020 Philippe COSTE
+// Copyright (c) 2020 Antoine TRAN TAN
+// Copyright (c) 2019 ARM Limited
+// Copyriht (c) 2020 Brayan KUTLAR
+
+#include "mbed.h"
+#include "rtos.h"
+#include "C12832.h"
+#include "I2C.h"
+#include "Mutex.h"
+
+// Blinking rate in milliseconds
+#define BLINKING_RATE 500ms
+
+C12832 LCD(D11, D13, D12, D7, D10);
+
+I2C i2c(I2C_SDA, I2C_SCL);
+
+float x, y, z;
+Mutex myMutex;
+
+Thread t1;
+Thread t2;
+
+void temperature();
+void acce();
+
+int main()
+{
+    t1.start(&temperature);
+    t2.start(&acce);
+
+    while (true)
+    {
+        ThisThread::sleep_for(BLINKING_RATE);
+    }
+}
+void temperature()
+{
+    char cmd[2] = {0x01, 0x00}; //tableaux de donnees
+    char data[2];
+
+    int16_t data_entiere = 0;
+
+    float temperature;
+    int resultat;
+
+    myMutex.lock();                     //lock
+    resultat = i2c.write(0x90, cmd, 2); //ecriture (adresse,donnees a envoyer,nombre de donnees a envoyer)
+    myMutex.unlock();                   //unlock
+    cmd[0] = 0x00;
+    while (true)
+    {
+        //lock
+        myMutex.lock();
+        i2c.write(0x90, cmd, 1);
+        i2c.read(0x91, data, 2);
+
+        data_entiere = ((int16_t)data[0]) << 8;
+        data_entiere += (int16_t)data[1];
+        data_entiere = data_entiere >> 5;
+
+        temperature = (float)data_entiere * 0.125f;
+
+        //i2c.transfer(0x90, cmd, 1, data, 2, nullptr);
+        i2c.write(0x90,cmd,1);
+        i2c.read(0x91,data,2);
+        myMutex.unlock(); //unlock
+        ThisThread::sleep_for(1s);
+    }
+}
+void acce()
+{
+    char mycmd[2] = {0x07, 0x00}; //registre mode 0x00
+    char cmd_1[2] = {0x08, 0x21}; //registre SR 0x21
+    char cmd_2[2] = {0x07, 0x01}; //registre mode 0x01
+    char data[3];                 //resigre representant les axe X,Y,Z
+    char axeX[1] = {0x00};
+    myMutex.lock();            //lock
+    i2c.write(0x98, mycmd, 2); //ecriture
+    i2c.write(0x98, cmd_1, 2); //ecriture
+    i2c.write(0x98, cmd_2, 2); //ecriture
+    myMutex.unlock();          //unlock
+
+    while (true)
+    {
+
+        myMutex.lock(); //lock
+        i2c.write(0x98, axeX, 1);
+        i2c.read(0x98, data, 3); //lire en bocule sur les axes X,Y,Z
+        for (int i = 0; i < 3; i++)
+        {
+            if ((data[i] & 0x20) == 0x20)
+            {
+                data[i] = data[i] | 0xC0;
+            }
+            else
+            {
+                data[i] = data[i] & ~0xC0;
+            }
+        }
+
+        x = (float)((signed char)(data[0]) * 1.5 / 32);
+        y = (float)((signed char)(data[1]) * 1.5 / 32);
+        z = (float)((signed char)(data[2]) * 1.5 / 32);
+        LCD.cls();
+        LCD.locate(0, 0);
+        LCD.printf("X=%1.2f", x);
+        LCD.locate(0, 10);
+        LCD.printf("Y=%1.2f", y);
+        LCD.locate(0, 20);
+        LCD.printf("Z=%1.2f", z);
+        myMutex.unlock(); //unlock
+        ThisThread::sleep_for(100ms);
+    }
+}
