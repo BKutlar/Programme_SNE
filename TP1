@@ -1,0 +1,25 @@
+ // Copyright (c) 2020 Antoine TRAN TAN
+ // Copyright (c) 2019 ARM Limited
+
+
+#include "mbed.h"
+#include "rtos.h"
+#include "RGB.h"
+
+// Blinking rate in milliseconds
+#define BLINKING_RATE     500ms
+
+//Instancier RBG 
+RGB my_rgb(0,1) ; 
+AnalogIn pot1 (A0); 
+float Vpot ;
+int main()
+{
+  
+    while(1)
+    {
+        Vpot = pot1.read() ; 
+        my_rgb.setLedR(1.0,Vpot);
+     
+   }
+}
