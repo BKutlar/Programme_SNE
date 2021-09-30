@@ -1,0 +1,100 @@
+// Copyright (c) 2020 Philippe COSTE
+// Copyright (c) 2020 Antoine TRAN TAN
+// Copyright (c) 2019 ARM Limited
+// Copyright (c) 2020 Brayan KUTLAR
+
+#include "mbed.h"
+#include "rtos.h"
+#include "SPI.h"
+
+// Blinking rate in milliseconds
+#define SLEEPING_RATE 1ms
+
+
+void rst_compteur_fct(void);
+void gestion_clk_fct(void);
+
+//instanciation de l'interface SPI avec la carte uBus(SPI4)
+SPI mikroBus(PE_6,PE_5,PE_2,PE_4,use_gpio_ssel);
+char tab_tx[2]={0x03,0x03};
+DigitalOut MB_SS(PE_4);
+DigitalOut pulse_compteur(PF_8);
+DigitalOut pulse_RAZ(PC_6);
+int compteur_ligne=0; 
+char valeurs_leds[7][2] = {
+    {0x0E,0x08},
+    {0x11,0x0C},
+    {0x10,0x0A},
+    {0x08,0x09},
+    {0x04,0x1F},
+    {0x02,0x08},
+    {0x1F,0x08},
+
+
+};
+
+//Fonction d'initialisation de bus SPI
+
+void SPI_init(void)
+{
+    //De-selection de la carte uBus 
+    MB_SS = 1;
+    //Configuration du format : 8 bits par trame SPI
+    mikroBus.format(8,0);
+    //Configuration de la frequence de transmission 
+    mikroBus.frequency(25000000);
+}
+
+void rst_compteur_fct(void)
+{
+    //Mise a 1 de l'entree de reinitialisation du compteur
+    pulse_RAZ = 1; 
+
+    wait_us(1);
+    //Mise a 0 de l'entree de reinitialisation du compteur
+    pulse_RAZ=0;
+}
+
+void gestion_clk_fct(void)
+{
+    //Mise a 0 de l'horloge du compteur 
+    pulse_compteur=0;
+
+    wait_us(1);
+    //Mise a 0 de l'horloge du compteur 
+    pulse_compteur=1; 
+
+}
+
+int main()
+{
+    SPI_init();
+
+     
+     
+
+    while (true)
+    {
+        
+        mikroBus.write(valeurs_leds[compteur_ligne],2,nullptr,0);
+
+        wait_us(1000);
+
+       gestion_clk_fct();
+        
+        compteur_ligne++;
+         if(compteur_ligne==8)
+        {
+            
+            compteur_ligne=0; 
+            rst_compteur_fct(); 
+        }
+        
+             
+        ThisThread::sleep_for(SLEEPING_RATE);
+    }
+}
+
+
+
+
