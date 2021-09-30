@@ -1,0 +1,50 @@
+// Copyright (c) 2020 Brayan KUTLAR
+// Copyright (c) 2020 Philippe COSTE
+// Copyright (c) 2020 Antoine TRAN TAN
+// Copyright (c) 2019 ARM Limited
+
+#include "mbed.h"
+#include "rtos.h"
+#include "C12832.h"
+#include "I2C.h"
+#include <cstdint>
+
+// Blinking rate in milliseconds
+#define BLINKING_RATE 500ms
+
+// LCD display using App Shield
+C12832 LCD(D11, D13, D12, D7, D10);
+
+
+ I2C i2c(I2C_SDA , I2C_SCL);//permet de relier les broches SCL et SDA et d'utiliser i2c
+
+
+int main()
+
+{
+    char cmd[2]={0x01,0x00} ;//tableaux de donnees 
+    char data[2]; 
+
+    int16_t data_entiere =0;
+
+    float temperature;
+    int resultat ; 
+    
+
+    resultat = i2c.write( 0x90,cmd,2);  //ecriture (adresse,donnees a envoyer,nombre de donnees a envoyer)
+    cmd[0]=0x00;
+   while (true){
+       
+       i2c.write(0x90,cmd,1);
+       i2c.read(0x91,data,2);
+       data_entiere=((int16_t) data[0]) << 8;
+       data_entiere += (int16_t) data[1];
+       data_entiere=data_entiere>>5;
+
+       temperature = (float) data_entiere*0.125f; 
+
+        i2c.transfer(0x90,cmd,1,data,2,nullptr);
+
+        ThisThread::sleep_for(1000ms);
+        }
+}
