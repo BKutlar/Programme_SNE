@@ -1,0 +1,146 @@
+// Copyright (c) 2020 Philippe COSTE
+// Copyright (c) 2020 Antoine TRAN TAN
+// Copyright (c) 2019 ARM Limited
+// Copyright (c) 2019 Brayan KUTLAR
+
+#include "mbed.h"
+#include "rtos.h"
+#include "C12832.h"
+#include "CAN.h"
+#include <stdlib.h>
+#include "Mail.h"
+
+// Blinking rate in milliseconds
+#define BLINKING_RATE 200ms
+
+//LCD display using App Shield
+C12832 LCD(D11, D13, D12, D7, D10);
+
+CAN bus(PD_0, PD_1, 1000000);
+
+Mail<CANMessage, 100> boite_mail;
+CANMessage message_recu;
+int val_aleatoire = rand() % 0x800; // valeur bornee entre 0 et 0x800
+int code_barre_filtre = 0;
+int code_barre_filtre_=0; 
+Thread transmission_;
+Thread reception_;
+void transmission();
+void reception();
+
+int main()
+{
+
+    code_barre_filtre = bus.filter(0x00, 0x001, CANStandard);
+    code_barre_filtre_ = bus.filter(0x200,0x7FF,CANStandard); 
+    transmission_.start(&transmission);
+    reception_.start(&reception);
+
+    while (true)
+    {
+
+        ThisThread::sleep_for(BLINKING_RATE);
+    }
+}
+
+void transmission()
+{
+    char data[1] = {1};
+    CANMessage message(val_aleatoire, data, 1, CANData, CANStandard);
+    CANMessage *mail;
+
+    while (true)
+    {
+        mail = boite_mail.try_get();
+        if (mail != nullptr)
+        {
+            bus.write(*mail);
+            boite_mail.free(mail);
+        }
+
+        ThisThread::sleep_for(BLINKING_RATE);
+    }
+}
+
+void reception()
+
+{
+    int resultat;
+    CANMessage *mail;
+<<<<<<< HEAD
+
+    while (true)
+    {
+        resultat = bus.read(message_recu);
+
+        if (resultat == 1)
+        {
+
+            if (message_recu.type == CANData) // On a recu une trame de donnees
+            {
+                LCD.locate(0, 10);
+                LCD.printf("id=%x   ", message_recu.id);
+                LCD.locate(0, 20);
+                LCD.printf("type=%d    ", message_recu.type);
+            }
+
+            else // On a recu une trame de requete
+            {
+                mail = boite_mail.try_alloc(); //alouer un espace dans la boite mail
+
+                if (mail != nullptr)
+                {
+                    *mail = message_recu;
+                    mail->type = CANData; // le type devient donc une donnee et plus une requete
+                    for (int i = 0; i < mail->len; i++)
+                    {
+                        mail->data[i] = i;
+                    }
+                    boite_mail.put(mail);
+                }
+            }
+
+            ThisThread::sleep_for(BLINKING_RATE);
+        }
+    }
+
+    
+}
+=======
+
+    while (true)
+    {
+        resultat = bus.read(message_recu);
+
+        if (resultat == 1)
+        {
+
+            if (message_recu.type == CANData) // On a recu une trame de donnees
+            {
+                LCD.locate(0, 10);
+                LCD.printf("id=%x   ", message_recu.id);
+                LCD.locate(0, 20);
+                LCD.printf("type=%d    ", message_recu.type);
+            }
+
+            else // On a recu une trame de requete
+            {
+                mail = boite_mail.try_alloc(); //alouer un espace dans la boite mail
+
+                if (mail != nullptr)
+                {
+                    *mail = message_recu;
+                    mail->type = CANData; // le type devient donc une donnee et plus une requete
+                    for (int i = 0; i < mail->len; i++)
+                    {
+                        mail->data[i] = i;
+                    }
+                    boite_mail.put(mail);
+                }
+            }
+
+            ThisThread::sleep_for(BLINKING_RATE);
+        }
+    }
+}
+
