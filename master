@@ -1,0 +1,29 @@
+// Copyright (c) 2020 Philippe COSTE
+// Copyright (c) 2020 Antoine TRAN TAN
+// Copyright (c) 2019 ARM Limited
+
+#include "mbed.h"
+#include "rtos.h"
+#include "C12832.h"
+
+// Blinking rate in milliseconds
+#define BLINKING_RATE 500ms
+
+// LCD display using App Shield
+C12832 LCD(D11, D13, D12, D7, D10);
+
+int main()
+{
+    // Initialise the digital pin LED1 as an output
+    DigitalOut led(LED1);
+
+    // Display welcome message using LCD
+    LCD.cls();
+    LCD.printf("%s", "Welcome on Nucleo F429ZI board");
+
+    while (true)
+    {
+        led = !led;
+        ThisThread::sleep_for(BLINKING_RATE);
+    }
+}
